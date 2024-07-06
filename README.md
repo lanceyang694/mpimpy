@@ -6,7 +6,7 @@ In memory computing technology is a potential solution to overcome the von Neuma
 
 ## Installing
 
-You can install mPimPy var pip.
+You can install mPimPy via pip.
 
 ```shell
 pip install mpimpy
