@@ -4,112 +4,89 @@
 
 In memory computing technology is a potential solution to overcome the von Neumann bottleneck and to provide significant improvements in energy efficiency. However, for in-memory computing, the algorithm and hardware are highly intertwined, making it challenging to design an optimal circuit. To address this issue, the author developed a Python package named "mPimPy" that embeds hardware simulation into the algorithm. From a user's perspective, mPimPy serves as the equivalent of the Numpy.dot function to implement the matrix multiplication which is the key operation of neural networks, machine learning, signal processing, and scientific computing. By simply replacing the `np.dot` function in your original code with `MapReducedot` and rerunning your program, you can simulate scenarios such as neural networks or any algorithm involving matrix multiplications. Whether you are a computer engineer or a microelectronic scientist, mPimPy enables you to quickly deploy your code on in-memory computing hardware or verify your circuit design solutions. 
 
+## Note
+Although this package can realize part of the function in 'main' branch, it lacks the support for FP data and line resistance.
+
+The aim of this torch version mpimpy is to simulate memristive VMM in deep learning layers including the convolution and FC layers. 
+The full version of the package will be released recently.
+
 ## Installing
 
-You can install mPimPy via pip.
+Currently, mpimpy torch version is in development, and it can only be installed from the source code.
+
 
 ```shell
-pip install mpimpy
+git clone -b mpimpy-torch https://github.com/lanceyang694/mpimpy.git
+
+cd mpimpy
+
+# install the package
+pip install -r requirements.txt
+
+# change to the files in mpimpy-torch
+cd mpimpy-torch
+# new files in this dictionary and run
+
 ```
 
 ## Example
 
 ```python
-import numpy as np 
-from mpimpy import memmat 
-from mpimpy import memmatfp 
-from mpimpy import memmatdp 
-import matplotlib.pyplot as plt 
+from matplotlib import pyplot as plt
+from memmat_tensor import DPETensor
+from data_formats import SlicedData
+    
+tb_mode = 1
+# for CPU
+if tb_mode == 0:
+    torch.manual_seed(42)
+    x_data = torch.randn(1000, 1000)
+    mat_data = torch.randn(1000, 1200)
+    xblk = torch.tensor([1, 1, 4, 4])
+    mblk = torch.tensor([1, 1, 4, 4])
+    mat = SlicedData(mblk)
+    x = SlicedData(xblk)
 
-##*************************Define the Relative Error****************************
+    engine = DPETensor(var=0.05)
+    mat.slice_data_imp(engine, mat_data)
+    x.slice_data_imp(engine, x_data, transpose=True)
+    start = time.time()
+    result = engine(x, mat).numpy()
+    end = time.time()
+    print("Tensor time: ", end-start)
 
-def RE(ytest, ypred):
-    return np.sqrt(np.sum((ytest-ypred)**2))/np.sqrt(np.sum(ytest**2))
+    rel_result = torch.matmul(x_data, mat_data).numpy()
+    plt.scatter(rel_result.reshape(-1), result.reshape(-1))
+    plt.xlabel('Expected Value of Dot Product')
+    plt.ylabel('Measured Value of Dot Product')
+    plt.show()
+# for GPU
+elif tb_mode == 1:
+    torch.manual_seed(42)
+    device = torch.device('cuda:0')
+    x_data = torch.randn(1000, 1000, device=device)
+    mat_data = torch.randn(1000, 1200, device=device)
+    xblk = torch.tensor([1, 1, 4, 4])
+    mblk = torch.tensor([1, 1, 4, 4])
+    mat = SlicedData(mblk, device=device)
+    x = SlicedData(xblk, device=device)
 
-##*************************Generate the Input Matrix**************************** 
+    engine = DPETensor(var=0.0)
+    x.slice_data_imp(engine, x_data, transpose=True)
+    mat.slice_data_imp(engine, mat_data)
+    start = time.time()
+    result = engine(x, mat)
+    end = time.time()
+    print("Tensor time: ", end-start)
+    result = result.cpu().numpy()
 
-a = np.random.randn(32, 32)
-b = np.random.randn(32, 32)
-c = np.dot(a, b)
+    rel_result = torch.matmul(x_data, mat_data).cpu().numpy()
 
-##*************************Initialize the Matrix Engine************************* 
-'''
-The following codes are to initialize the matrix engine, where the parameters are the same as the memristor crossbar array.
-'''
-
-dpe_dp = memmatdp.diffpairdpe(HGS=1e-5, LGS=1e-7, g_level=16, var=0.05, vnoise = 0, wire_resistance=2.93,
-                            rdac=256, radc=1024, vread=0.1, array_size=(32, 32))
-
-dpe_int = memmat.bitslicedpe(HGS=1/1.3e5, LGS=1/2.1e6, g_level=16, var=0.05, vnoise = 0, wire_resistance=2.93, 
-                             rdac=256, radc=1024, vread=0.1, array_size=(32, 32))
-
-dpe_fp = memmatfp.fpmemdpe(HGS=1e-5, LGS=1e-7, g_level=16, var=0.05, vnoise = 0, wire_resistance=2.93,
-                            rdac=256, radc=1024, vread=0.1, array_size=(32, 32))
-
-##****************************************************************************** 
-
-##********************Perform the Matrix Multiplication************************* 
-'''
-The following codes are to perform the matrix multiplication by the software and hardware, respectively. 
-The functions are equivalent to the np.dot() function in numpy. Therefore, when you perform the IMC software-hardware co-simulation, what you need to do is to 
-replace the "np.dot" in the original program with one of the following four instructions after intializing the matrix engine. So easy, right?
-'''
-c_df_hardware = dpe_dp.MapReduceDot(a, b)  
-
-c_int_software = dpe_int.BitSliceVMM(a, b, xblk=[1,1,2,4], mblk=[1,1,2,4])
-c_int_hardware = dpe_int.MapReduceDot(a, b, xblk=[1 for i in range(8)], mblk=[1 for i in range(8)], wire_factor=False)   #Activate the physical simulation core, wire_factor=True
-c_int_hardware_m = dpe_int.MapReduceDot(a, b, xblk=[1,1,2,4], mblk=[1,1,2,4], wire_factor=False)   #Activate the physical simulation core, wire_factor=True
-
-c_fp_software = dpe_fp.fpvmm(a,b, xblk=[1 for i in range(23)], mblk=[1 for i in range(23)], bw_e=8)
-c_fp_hardware = dpe_fp.MapReduceDot(a, b, xblk=[1 for i in range(23)], mblk=[1 for i in range(23)], bw_e=8)  
-
-##*******************Plot the results and calculate the RE***********************
-plt.subplot(311)
-plt.scatter(c.reshape(-1), c_df_hardware.reshape(-1), s=1)
-plt.plot(c.reshape(-1), c.reshape(-1), 'r')
-plt.title('INT4 diffpair')
-plt.xlabel('True')
-plt.ylabel('diffpair VMM')
-
-plt.subplot(323)
-plt.scatter(c.reshape(-1), c_int_software.reshape(-1), s=1)
-plt.plot(c.reshape(-1), c.reshape(-1), 'r')
-plt.title('INT8 software')
-plt.xlabel('True')
-plt.ylabel('Bit-sliced VMM')
-
-plt.subplot(324)
-plt.scatter(c.reshape(-1), c_int_hardware.reshape(-1), s=1)
-plt.plot(c.reshape(-1), c.reshape(-1), 'r')
-plt.title('INT8 hardware')
-plt.xlabel('True')
-plt.ylabel('Bit-sliced VMM')
-
-plt.subplot(325)
-plt.scatter(c.reshape(-1), c_fp_software.reshape(-1), s=1)
-plt.plot(c.reshape(-1), c.reshape(-1), 'r')
-plt.title('FP32 software')
-plt.xlabel('True')
-plt.ylabel('Bit-sliced VMM')
-
-plt.subplot(326)
-plt.scatter(c.reshape(-1), c_fp_hardware.reshape(-1), s=1)
-plt.plot(c.reshape(-1), c.reshape(-1), 'r')
-plt.title('FP32 hardware')
-plt.xlabel('True')
-plt.ylabel('Bit-sliced VMM')
-
-plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-plt.show()
-
-print('PimPy is installed successfully!')
-print('The relative error of the four cases are as follows:')
-print('INT4 diffpair RE: ', RE(c, c_df_hardware))
-print('INT8 software RE: ', RE(c, c_int_software))
-print('INT8 hardware RE: ', RE(c, c_int_hardware))
-print('INT8 hardware (m) RE: ', RE(c, c_int_hardware_m))
-print('FP32 software RE: ', RE(c, c_fp_software))
-print('FP32 hardware RE: ', RE(c, c_fp_hardware))
+    print(ABSE(result, rel_result))
+    plt.scatter(rel_result.reshape(-1), result.reshape(-1))
+    plt.xlabel('Expected Value of Dot Product')
+    plt.ylabel('Measured Value of Dot Product')
+    plt.show()
 ```
 
 ## Author
