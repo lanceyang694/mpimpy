@@ -29,42 +29,28 @@ cd mpimpy-torch
 
 ```
 
+## Version Information
+### 0.0.1   
+For INT data support only
+### 0.0.2
+We add the FP data support fot the dataformat
+Changed the consideration for the batch input data
+
+
 ## Example
 
 ```python
 from matplotlib import pyplot as plt
 from memmat_tensor import DPETensor
 from data_formats import SlicedData
+
     
 tb_mode = 1
-# for CPU
+# test for INT format
 if tb_mode == 0:
     torch.manual_seed(42)
-    x_data = torch.randn(1000, 1000)
-    mat_data = torch.randn(1000, 1200)
-    xblk = torch.tensor([1, 1, 4, 4])
-    mblk = torch.tensor([1, 1, 4, 4])
-    mat = SlicedData(mblk)
-    x = SlicedData(xblk)
-
-    engine = DPETensor(var=0.05)
-    mat.slice_data_imp(engine, mat_data)
-    x.slice_data_imp(engine, x_data, transpose=True)
-    start = time.time()
-    result = engine(x, mat).numpy()
-    end = time.time()
-    print("Tensor time: ", end-start)
-
-    rel_result = torch.matmul(x_data, mat_data).numpy()
-    plt.scatter(rel_result.reshape(-1), result.reshape(-1))
-    plt.xlabel('Expected Value of Dot Product')
-    plt.ylabel('Measured Value of Dot Product')
-    plt.show()
-# for GPU
-elif tb_mode == 1:
-    torch.manual_seed(42)
     device = torch.device('cuda:0')
-    x_data = torch.randn(1000, 1000, device=device)
+    x_data = torch.randn(4000, 1000, device=device)
     mat_data = torch.randn(1000, 1200, device=device)
     xblk = torch.tensor([1, 1, 4, 4])
     mblk = torch.tensor([1, 1, 4, 4])
@@ -77,16 +63,46 @@ elif tb_mode == 1:
     start = time.time()
     result = engine(x, mat)
     end = time.time()
-    print("Tensor time: ", end-start)
+    print("Tensor time: ", end - start)
+    # result = engine._test(x, mat)
     result = result.cpu().numpy()
 
     rel_result = torch.matmul(x_data, mat_data).cpu().numpy()
 
-    print(ABSE(result, rel_result))
+    print(RE(result, rel_result))
     plt.scatter(rel_result.reshape(-1), result.reshape(-1))
     plt.xlabel('Expected Value of Dot Product')
     plt.ylabel('Measured Value of Dot Product')
     plt.show()
+# test for FP format
+elif tb_mode == 1:
+    torch.manual_seed(42)
+    device = torch.device('cuda:0')
+    x_data = torch.randn(4000, 1000, device=device)
+    mat_data = torch.randn(1000, 1200, device=device)
+    xblk = torch.tensor([1, 1, 4, 4])
+    mblk = torch.tensor([1, 1, 4, 4])
+    mat = SlicedData(mblk, device=device, bw_e=8)
+    x = SlicedData(xblk, device=device, bw_e=8)
+
+    engine = DPETensor(var=0.0)
+    x.slice_data_imp(engine, x_data, transpose=True)
+    mat.slice_data_imp(engine, mat_data)
+    start = time.time()
+    result = engine(x, mat)
+    end = time.time()
+    print("Tensor time: ", end - start)
+    # result = engine._test(x, mat)
+    result = result.cpu().numpy()
+
+    rel_result = torch.matmul(x_data, mat_data).cpu().numpy()
+
+    print(RE(result, rel_result))
+    plt.scatter(rel_result.reshape(-1), result.reshape(-1))
+    plt.xlabel('Expected Value of Dot Product')
+    plt.ylabel('Measured Value of Dot Product')
+    plt.show()
+
 ```
 
 ## Author

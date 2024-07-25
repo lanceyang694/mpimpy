@@ -83,8 +83,8 @@ class SlicedData():
         # implement the localized slicing of the data
         # the slice is determined by the local max data
 
-        self.sliced_data, self.quantized_data, self.max_data = engine.slice_data(data,
-                                                                                self.slice_method,
-                                                                                transpose,
-                                                                                 self.bw_e)
+        self.sliced_data, self.quantized_data, self.max_data, self.e_bias = engine.slice_data(data,
+                                                                                              self.slice_method,
+                                                                                              transpose,
+                                                                                              self.bw_e)
         self.shape = self.quantized_data.shape
