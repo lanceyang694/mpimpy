@@ -211,6 +211,8 @@ class DPETensor(object):
             data_int = data_int.squeeze(0)
             mat_data = mat_data.squeeze(0)
             max_mat = max_mat.squeeze(0)
+            if e_bias is not None:
+                e_bias = e_bias.squeeze(0)
         return data_int, mat_data, max_mat, e_bias
 
     def _test(self, x:SlicedData, mat:SlicedData):
