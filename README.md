@@ -127,9 +127,7 @@ Any advice and criticism are highly appreciated on this package. Naturally, you 
 
 ## References
 
-[1]    [Zidan M A, Jeong Y J, Lee J, et al. A general memristor-based partial differential equation solver[J]. Nature Electronics, 2018, 1(7): 411-420.](https://www.nature.com/articles/s41928-018-0100-6)
+[1] [Zidan M A, Jeong Y J, Lee J, et al. A general memristor-based partial differential equation solver[J]. Nature Electronics, 2018, 1(7): 411-420.](https://www.nature.com/articles/s41928-018-0100-6)
 
-[2]     [Li C, Hu M, Li Y, et al. Analogue signal and image processing with large
+[2] [Li C, Hu M, Li Y, et al. Analogue signal and image processing with large
  memristor crossbars[J]. Nature electronics, 2018, 1(1): 52-59.](https://www.nature.com/articles/s41928-017-0002-z)
-# mpimpy
-# mpimpy
