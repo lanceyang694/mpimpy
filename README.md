@@ -35,7 +35,13 @@ For INT data support only
 ### 0.0.2
 We add the FP data support fot the dataformat
 Changed the consideration for the batch input data
-
+### 0.0.3
+Update includes:
+- Added support for different splitting granularity of input data
+  - The input data can be sliced by the matrix mode and row mode
+  - It is controlled by "input_en" in class "SlicedData"
+- Added support for different splitting granularity of weight
+  - For FP data, the data slice can support the double exponet quantization
 
 ## Example
 
@@ -46,53 +52,45 @@ from data_formats import SlicedData
 
     
 tb_mode = 1
-# test for INT format
 if tb_mode == 0:
-    torch.manual_seed(42)
-    device = torch.device('cuda:0')
-    x_data = torch.randn(4000, 1000, device=device)
-    mat_data = torch.randn(1000, 1200, device=device)
-    xblk = torch.tensor([1, 1, 4, 4])
-    mblk = torch.tensor([1, 1, 4, 4])
-    mat = SlicedData(mblk, device=device)
-    x = SlicedData(xblk, device=device)
-
-    engine = DPETensor(var=0.0)
-    x.slice_data_imp(engine, x_data, transpose=True)
+    x_data = torch.randn(1000, 100)
+    mat_data = torch.randn(100, 800)
+    mblk = xblk = torch.tensor(10 * [1] + 5 * [2])
+    mat = SlicedData(mblk, bw_e=8)
+    x = SlicedData(xblk, bw_e=8, input_en=True)
+    engine = DPETensor(var=0.0, array_size=(32,32), input_size=(32,32))
     mat.slice_data_imp(engine, mat_data)
+    x.slice_data_imp(engine, x_data)
     start = time.time()
-    result = engine(x, mat)
+    result = engine(x, mat).numpy()
     end = time.time()
     print("Tensor time: ", end - start)
-    # result = engine._test(x, mat)
-    result = result.cpu().numpy()
 
-    rel_result = torch.matmul(x_data, mat_data).cpu().numpy()
-
+    rel_result = torch.matmul(x_data, mat_data).numpy()
     print(RE(result, rel_result))
     plt.scatter(rel_result.reshape(-1), result.reshape(-1))
     plt.xlabel('Expected Value of Dot Product')
     plt.ylabel('Measured Value of Dot Product')
     plt.show()
-# test for FP format
+
 elif tb_mode == 1:
     torch.manual_seed(42)
     device = torch.device('cuda:0')
-    x_data = torch.randn(4000, 1000, device=device)
+    x_data = torch.randn(3, 1000, 1000, device=device)
     mat_data = torch.randn(1000, 1200, device=device)
-    xblk = torch.tensor([1, 1, 4, 4])
-    mblk = torch.tensor([1, 1, 4, 4])
-    mat = SlicedData(mblk, device=device, bw_e=8)
-    x = SlicedData(xblk, device=device, bw_e=8)
+    xblk = torch.tensor([1, 1, 2, 4])
+    mblk = torch.tensor([1, 1, 2, 4])
+    
+    mat = SlicedData(mblk, device=device)
+    x = SlicedData(xblk, device=device, input_en=True)
 
-    engine = DPETensor(var=0.0)
-    x.slice_data_imp(engine, x_data, transpose=True)
+    engine = DPETensor(var=0.05, array_size=(64,64), input_size=(64,64))
+    x.slice_data_imp(engine, x_data)
     mat.slice_data_imp(engine, mat_data)
     start = time.time()
     result = engine(x, mat)
     end = time.time()
     print("Tensor time: ", end - start)
-    # result = engine._test(x, mat)
     result = result.cpu().numpy()
 
     rel_result = torch.matmul(x_data, mat_data).cpu().numpy()

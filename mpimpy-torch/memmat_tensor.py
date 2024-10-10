@@ -101,7 +101,8 @@ class DPETensor(object):
                 xmax = xmax.reshape(1, 1, -1, 1, 1)
             elif(x.sliced_data.dim() == 6):
                 xmax = xmax.reshape(1, 1, -1, 1, 1, 1)
-        #with batch, the shape is (batch,num_divide_row_a,num_divide, slice_a ,m, n) or (batch,num_divide_row_a,num_divide, slice_a ,dbfp_slice,m, n)
+        # with batch, the shape is (batch,num_divide_row_a,num_divide, slice_a ,m, n)
+        #                       or (batch,num_divide_row_a,num_divide, slice_a ,dbfp_slice,m, n)
         elif len(x.shape) == 3:     
             if x.sliced_data.dim() == 6:
                 xmax = xmax.reshape(1, 1, 1, -1, 1, 1)
