@@ -5,7 +5,7 @@
 import copy
 import torch
 
-class SlicedData():
+class SlicedData(object):
     """
     record the key attributes of the sliced data
     data: the input data with quantization
@@ -17,7 +17,7 @@ class SlicedData():
     sliced_data_recalled: the flag to record the sliced data is calculated or not
 
     """
-    def __init__(self, slice_method:torch.Tensor, bw_e=None, device=None):
+    def __init__(self, slice_method:torch.Tensor, bw_e=None, input_en=False, dbfp_en=False, device=None):
         """
         the sliced data for the data slicing method with quantization
         :param data: the input data
@@ -25,40 +25,49 @@ class SlicedData():
         :param bw_e: the bit width of the exponent,
                     if None, the exponent is not used, and the SlicedData is the uint type, the sign is the first bit
                     if not None, the SlicedData is fp type, the exponent is the last several bits
+        :param input_en: enables row/column-wise input data quantization, default is False
+                        if True, the input data is quantized by the data of input_size in DPETensor
+        :param dbfp_en: enables the double bit fixed point, default is False
+                        if True, there are two exponents, one for small values and one for large values
         :param device: use cpu or gpu, default is cpu (None)
         """
         self.bw_e = bw_e
+        self.input_en = input_en
+        self.dbfp_en = dbfp_en
         self.slice_method = slice_method
         self.device = torch.device('cpu') if device is None else device
         self.shape = None
+
+        self.sliced_data = None
+        self.quantized_data = None
+        self.max_data = None
+        self.e_bias = None
         self._init_data(slice_method, bw_e, device)
 
     def _init_data(self, slice_method:torch.Tensor, bw_e, device):
+        assert slice_method[0] == 1, 'the first slice should be 1'
         if bw_e is None:
             # optimize the calculation of the sliced_max_weights
             self.sliced_max_weights = torch.zeros(len(slice_method), device=device)
             self.sliced_weights = torch.zeros(len(slice_method), device=device)
             temp_s, i = 0, 0
-            for slice in slice_method.flip(0):
-                self.sliced_max_weights[i] = 2 ** slice - 1
+            for s in slice_method.flip(0):
+                self.sliced_max_weights[i] = 2 ** s - 1
                 self.sliced_weights[i] = 2 ** temp_s
-                temp_s += slice
+                temp_s += s
                 i += 1
             self.sliced_weights[-1] *= -1
         # fp type
         else:
-            assert (slice_method[0] == 1 and slice_method[1] == 1), 'the first two slice bits should be 1'
-            new_slice_method = slice_method
-            # max weights of each slice
-            self.sliced_max_weights = torch.Tensor([2 ** slice - 1 for slice in new_slice_method]).to(device)
-            # the weights of each slice
-            self.sliced_weights = torch.zeros_like(self.sliced_max_weights, device=device)
+            self.sliced_max_weights = torch.zeros(len(slice_method), device=device)
+            self.sliced_weights = torch.zeros(len(slice_method), device=device)
             temp_s, i = 0, 0
-            for slice in new_slice_method:
-                temp_s += slice
-                self.sliced_weights[i] = 2 ** (2-temp_s)
+            for s in slice_method.flip(0):
+                self.sliced_max_weights[i] = 2 ** s - 1
+                self.sliced_weights[i] = 2 ** temp_s
+                temp_s += s
                 i += 1
-            self.sliced_weights[0] *= -1
+            self.sliced_weights[-1] *= -1
 
     def __repr__(self):
         return 'sliced data with slice_method:{}'.format(self.slice_method)
@@ -66,25 +75,28 @@ class SlicedData():
     def __len__(self):
         return len(self.slice_method)
 
-    # @property
-    # def shape(self):
-    #     return self.quantized_data.shape
 
     def t(self):
         copy_ = copy.deepcopy(self)
-        copy_.sliced_data = self.sliced_data.transpose(2, 3)
+        copy_.sliced_data = self.sliced_data.transpose(-4, -5)
         copy_.quantized_data = self.quantized_data.T
+        copy_.max_data = self.max_data.transpose(0,1)
         return copy_
 
     def size(self):
         return self.quantized_data.size()
 
-    def slice_data_imp(self, engine, data, transpose=False):
-        # implement the localized slicing of the data
-        # the slice is determined by the local max data
+    def slice_data_imp(self, engine, data):
+        """
+        implement the localized slicing of the data
+        :param engine: dot product engine, DPETensor
+        :param data: tensor, 2D or 3D, if 2D, the shape is (row, col), if 3D, the shape is (batch, row, col)
+        :return:
+        """
 
-        self.sliced_data, self.quantized_data, self.max_data, self.e_bias = engine.slice_data(data,
-                                                                                              self.slice_method,
-                                                                                              transpose,
-                                                                                              self.bw_e)
+        self.sliced_data, self.quantized_data, self.max_data, self.e_bias, self.dbfp_en = engine.slice_data(data,
+                                                                                self.slice_method,
+                                                                                self.bw_e,
+                                                                                self.input_en,
+                                                                                self.dbfp_en)
         self.shape = self.quantized_data.shape
