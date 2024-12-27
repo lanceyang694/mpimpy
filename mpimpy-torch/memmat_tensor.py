@@ -271,7 +271,7 @@ class DPETensor(object):
 
 if __name__ == '__main__':
     tb_mode = 1
-    if tb_mode == 0:
+    if tb_mode == 0:    # for int test
         x_data = torch.randn(1000, 100)
         mat_data = torch.randn(100, 800)
         mblk = xblk = torch.tensor(10 * [1] + 5 * [2])
@@ -292,7 +292,7 @@ if __name__ == '__main__':
         plt.ylabel('Measured Value of Dot Product')
         plt.show()
 
-    elif tb_mode == 1:
+    elif tb_mode == 1:    # for fp test
         torch.manual_seed(42)
         device = torch.device('cuda:0')
         x_data = torch.randn(3, 1000, 1000, device=device)
