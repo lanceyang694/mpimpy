@@ -20,12 +20,22 @@ git clone -b mpimpy-torch https://github.com/lanceyang694/mpimpy.git
 
 cd mpimpy
 
+#---------------------------------------------------
+#       method 1: write code in this dictionary
+#---------------------------------------------------
 # install the package
 pip install -r requirements.txt
 
 # change to the files in mpimpy-torch
 cd mpimpy-torch
 # new files in this dictionary and run
+
+#---------------------------------------------------
+#       method 2: install the package
+#---------------------------------------------------
+# install the package
+python setup.py install
+
 
 ```
 

@@ -17,7 +17,7 @@ class SlicedData(object):
     sliced_data_recalled: the flag to record the sliced data is calculated or not
 
     """
-    def __init__(self, slice_method:torch.Tensor, bw_e=None, input_en=False, dbfp_en=False, device=None):
+    def __init__(self, slice_method:torch.Tensor, bw_e=None, input_en=False, dbfp_en=False, device=None, dtype=torch.float32):
         """
         the sliced data for the data slicing method with quantization
         :param data: the input data
@@ -41,6 +41,7 @@ class SlicedData(object):
         self.sliced_data = None
         self.quantized_data = None
         self.max_data = None
+        self.dtype = dtype
         self.e_bias = None
         self._init_data(slice_method, bw_e, device)
 
@@ -48,8 +49,8 @@ class SlicedData(object):
         assert slice_method[0] == 1, 'the first slice should be 1'
         if bw_e is None:
             # optimize the calculation of the sliced_max_weights
-            self.sliced_max_weights = torch.zeros(len(slice_method), device=device)
-            self.sliced_weights = torch.zeros(len(slice_method), device=device)
+            self.sliced_max_weights = torch.zeros(len(slice_method), device=device, dtype=self.dtype)
+            self.sliced_weights = torch.zeros(len(slice_method), device=device, dtype=self.dtype)
             temp_s, i = 0, 0
             for s in slice_method.flip(0):
                 self.sliced_max_weights[i] = 2 ** s - 1
@@ -59,8 +60,8 @@ class SlicedData(object):
             self.sliced_weights[-1] *= -1
         # fp type
         else:
-            self.sliced_max_weights = torch.zeros(len(slice_method), device=device)
-            self.sliced_weights = torch.zeros(len(slice_method), device=device)
+            self.sliced_max_weights = torch.zeros(len(slice_method), device=device, dtype=self.dtype)
+            self.sliced_weights = torch.zeros(len(slice_method), device=device, dtype=self.dtype)
             temp_s, i = 0, 0
             for s in slice_method.flip(0):
                 self.sliced_max_weights[i] = 2 ** s - 1
