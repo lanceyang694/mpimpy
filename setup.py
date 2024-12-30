@@ -13,7 +13,7 @@ with open("mpimpy-torch/__init__.py") as f:
     version = re.search(r"__version__ = ['\"](.*?)['\"]", f.read()).group(1)
 
 setup(
-    name="mpimpy-torch",
+    name="pimtorch",
     version=version,
     description='A python algorithm-hardware co-design framework for memristor-based in-memory computing.',
     author="Ling Yang, Houji, Zhou, et al.",
