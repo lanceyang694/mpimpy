@@ -40,7 +40,7 @@ python setup.py install
 #       method 3: install the package by pip
 #---------------------------------------------------
 cd dist
-pip install mpimpy_torch-0.0.4-py3-none-any.whl
+pip install pimtorch-0.0.4-py3-none-any.whl
 
 ```
 
