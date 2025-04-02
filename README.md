@@ -57,56 +57,55 @@ Update includes:
 ## Example
 
 ```python
-from matplotlib import pyplot as plt
-from memmat_tensor import DPETensor
-from data_formats import SlicedData
+# from matplotlib import pyplot as plt
+# from memmat_tensor import DPETensor
+# from data_formats import SlicedData
+# from utils import SNR
+# import torch
 
     
 tb_mode = 1
+device = torch.device('cuda:0')
 if tb_mode == 0:
-    x_data = torch.randn(1000, 100)
-    mat_data = torch.randn(100, 800)
-    mblk = xblk = torch.tensor(10 * [1] + 5 * [2])
-    mat = SlicedData(mblk, bw_e=8)
-    x = SlicedData(xblk, bw_e=8, input_en=True)
-    engine = DPETensor(var=0.0, array_size=(32,32), input_size=(32,32))
+    torch.manual_seed(42)
+    x_data = torch.randn(2, 1000, 1000, dtype=torch.float64, device=device)
+    mat_data = torch.randn(1000, 1000, dtype=torch.float64, device=device)
+    mblk = torch.tensor([1, 1, 2, 4])
+    xblk = torch.tensor([1, 1, 2, 4])
+    mat = SlicedData(mblk, device=device, bw_e=8, is_weight=True, quant_gran=(64, 64), paral_size=(64, 64))
+    x = SlicedData(xblk, device=device, bw_e=8, quant_gran=(64, 64), paral_size=(64, 64))
+    engine = DPETensor(var=0.05, g_level=16, rdac=16, radc=2 ** 8)
     mat.slice_data_imp(engine, mat_data)
     x.slice_data_imp(engine, x_data)
     start = time.time()
-    result = engine(x, mat).numpy()
-    end = time.time()
-    print("Tensor time: ", end - start)
-
-    rel_result = torch.matmul(x_data, mat_data).numpy()
-    print(RE(result, rel_result))
+    result = engine(x, mat).cpu().numpy()
+    rel_result = torch.matmul(x_data, mat_data).cpu().numpy()
+    snr_varlue = SNR(result, rel_result)
+    print("SNR(dB)", snr_varlue)
     plt.scatter(rel_result.reshape(-1), result.reshape(-1))
     plt.xlabel('Expected Value of Dot Product')
     plt.ylabel('Measured Value of Dot Product')
     plt.show()
-
 elif tb_mode == 1:
     torch.manual_seed(42)
-    device = torch.device('cuda:0')
-    x_data = torch.randn(3, 1000, 1000, device=device)
-    mat_data = torch.randn(1000, 1200, device=device)
-    xblk = torch.tensor([1, 1, 2, 4])
-    mblk = torch.tensor([1, 1, 2, 4])
-    
-    mat = SlicedData(mblk, device=device)
-    x = SlicedData(xblk, device=device, input_en=True)
-
-    engine = DPETensor(var=0.05, array_size=(64,64), input_size=(64,64))
-    x.slice_data_imp(engine, x_data)
+    x_data = torch.randn(1000, 1000, dtype=torch.float64, device=device)
+    mat_data = torch.randn(1000, 1000, dtype=torch.float64, device=device)
+    mblk = torch.tensor([1, 1, 2, 2])
+    xblk = torch.tensor([1, 1, 2, 2])
+    size = 64
+    paral_size = size
+    mat = SlicedData(mblk, device=device, bw_e=None, is_weight=True,
+                     paral_size=(paral_size, paral_size), quant_gran=(1,size))
+    x = SlicedData(xblk, device=device, bw_e=None, paral_size=(paral_size, paral_size), quant_gran=(1,size))
+    engine = DPETensor(var=0.00, g_level=16, rdac=16, radc=2**12)
     mat.slice_data_imp(engine, mat_data)
+    x.slice_data_imp(engine, x_data)
     start = time.time()
-    result = engine(x, mat)
-    end = time.time()
-    print("Tensor time: ", end - start)
-    result = result.cpu().numpy()
-
+    result = engine(x, mat).cpu().numpy()
     rel_result = torch.matmul(x_data, mat_data).cpu().numpy()
+    snr_varlue = SNR(result, rel_result)
+    print("SNR(dB)", snr_varlue)
 
-    print(RE(result, rel_result))
     plt.scatter(rel_result.reshape(-1), result.reshape(-1))
     plt.xlabel('Expected Value of Dot Product')
     plt.ylabel('Measured Value of Dot Product')
