@@ -9,7 +9,7 @@ from setuptools import setup, find_packages
 with open("README.md", 'r', encoding='utf-8') as f:
     long_description = f.read()
 
-with open("mpimpy-torch/__init__.py") as f:
+with open("pimtorch/__init__.py") as f:
     version = re.search(r"__version__ = ['\"](.*?)['\"]", f.read()).group(1)
 
 setup(
