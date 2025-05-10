@@ -59,7 +59,7 @@ The mPimPy package incorporates three simulation function modules: `memmat`, `me
 
 ### 2.2 Tutorial
 
-Step 1: import the necessary packages. 
+Step 1: import necessary packages. 
 
 ```python
 import numpy as np              
@@ -69,7 +69,7 @@ from mpimpy import memmat        # Integer quantum module
 from mpimpy import memmatfp      # Pre-alignment for floating-point number
 ```
 
-Step 2：generate the virtural chips.
+Step 2：generate virtural chips.
 
 ```python
 dpe_dp = memmatdp.diffpairdpe(HGS=1e-5, LGS=1e-7, g_level=16, var=0.05, vnoise = 0, wire_resistance=2.93,

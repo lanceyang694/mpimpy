@@ -1,7 +1,8 @@
 '''
+Version 1.0
 @Author: Ling Yang
 email: 3299285328@qq.com
-01/07, 2024
+03/25, 2025
 Huazhong University of Science and Technology, School of Integrated Circuits 
 A demo of the use for mpimpy
 
@@ -62,7 +63,7 @@ def RE(ytest, ypred):
     return np.sqrt(np.sum((ytest-ypred)**2))/np.sqrt(np.sum(ytest**2))
 
 ##*************************Generate the Input Matrix**************************** 
-
+np.random.seed(42)
 a = np.random.randn(32, 32)
 b = np.random.randn(32, 32)
 c = np.dot(a, b)
@@ -89,14 +90,14 @@ The following codes are to perform the matrix multiplication by the software and
 The functions are equivalent to the np.dot() function in numpy. Therefore, when you perform the IMC software-hardware co-simulation, what you need to do is to 
 replace the "np.dot" in the original program with one of the following four instructions after intializing the matrix engine. So easy, right?
 '''
-c_df_hardware = dpe_dp.MapReduceDot(a, b)  
+c_df_hardware = dpe_dp.MapReduceDot(a, b, wire_factor=False)  
 
 c_int_software = dpe_int.BitSliceVMM(a, b, xblk=[1,1,2,4], mblk=[1,1,2,4])
 c_int_hardware = dpe_int.MapReduceDot(a, b, xblk=[1 for i in range(8)], mblk=[1 for i in range(8)], wire_factor=False)   #Activate the physical simulation core, wire_factor=True
 c_int_hardware_m = dpe_int.MapReduceDot(a, b, xblk=[1,1,2,4], mblk=[1,1,2,4], wire_factor=False)   #Activate the physical simulation core, wire_factor=True
 
 c_fp_software = dpe_fp.fpvmm(a,b, xblk=[1 for i in range(23)], mblk=[1 for i in range(23)], bw_e=8)
-c_fp_hardware = dpe_fp.MapReduceDot(a, b, xblk=[1 for i in range(23)], mblk=[1 for i in range(23)], bw_e=8)  
+c_fp_hardware = dpe_fp.MapReduceDot(a, b, xblk=[1 for i in range(23)], mblk=[1 for i in range(23)], bw_e=8, wire_factor=False)  
 
 ##*******************Plot the results and calculate the RE***********************
 plt.subplot(311)

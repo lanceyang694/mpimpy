@@ -112,6 +112,16 @@ print('FP32 software RE: ', RE(c, c_fp_software))
 print('FP32 hardware RE: ', RE(c, c_fp_hardware))
 ```
 
+## Release Note
+
+### Fixed
+
+Fixed several bugs from the previous version.
+
+### Optimized
+
+Improved the matrix pre-processing algorithm by combing block-wise pre-processing and vector-wise strategies, reducing errors in **quantization** and **pre-alignment**.
+
 ## Author
 
 Author: Ling Yang
@@ -140,5 +150,3 @@ Any advice and criticism are highly appreciated on this package. Naturally, you 
 
 [2]     [Li C, Hu M, Li Y, et al. Analogue signal and image processing with large
  memristor crossbars[J]. Nature electronics, 2018, 1(1): 52-59.](https://www.nature.com/articles/s41928-017-0002-z)
-# mpimpy
-# mpimpy

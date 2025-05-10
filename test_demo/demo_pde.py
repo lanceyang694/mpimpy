@@ -19,7 +19,7 @@ dy = 0.1
 y = np.arange(0, L, dy)
 
 dt = 0.001
-t = np.arange(0, 2, dt)
+t = np.arange(0, 0.5, dt)
 a = 1
 
 U = np.zeros([len(x), len(y)])

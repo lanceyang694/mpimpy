@@ -1,15 +1,18 @@
 # memmatfp
-
 """
-
 @Author: Ling Yang
 email: 3299285328@qq.com
 Huazhong University of Science and Technology, School of Integrated Circuits 
-
+Date: 2025/02/01
 """ 
 
 import numpy as np 
 from mpimpy.crossbar import crossbar
+
+
+def ABSE(ytest, ypred): 
+    return np.sum(np.abs((ytest-ypred)/ytest))/(ytest.shape[0] * ytest.shape[1]) 
+
 
 class fpmemdpe:
     
@@ -32,67 +35,76 @@ class fpmemdpe:
         assert self.rdac>=2
         assert self.radc>=2
         
-        
     def __Dec2FpMap(self, decmat, blk=[1,2,2,2,4,4,4,4], bw_e=8): 
         
-        newblk = [1,1] + blk 
+        newblk = [1,1]+blk 
         num_blk = len(newblk) 
         
-        max_a = np.max(np.abs(decmat))
-        e_bia = 0
-        
-        if max_a>=2:
-            while (max_a>=2):
-                max_a /= 2
-                e_bia += 1
-        elif (max_a<1) and (max_a>0):
-            while ((max_a<1) and (max_a>0)):
-                max_a *= 2
-                e_bia -= 1
-        else:
-            e_bia = 0
+        decmat_align = np.zeros((decmat.shape[0], decmat.shape[1]))
+        e_bia = np.zeros(decmat.shape[0])
+        for i in range(decmat.shape[0]):
+            max_a = np.max(np.abs(decmat[i,:]))
+            if max_a>=2:
+                while (max_a>=2):
+                    max_a /= 2
+                    e_bia[i] += 1
+            elif (max_a<1) and (max_a>0):
+                while ((max_a<1) and (max_a>0)):
+                    max_a *= 2
+                    e_bia[i] -= 1
+            else:
+                e_bia[i] = 0
+                
+            decmat_align[i,:] = decmat[i,:]/2**e_bia[i]
             
-        decmat_aliE = decmat / 2**e_bia 
-        
-        decmat_aliE[np.where(decmat_aliE<0)] = 4 + decmat_aliE[np.where(decmat_aliE<0)] 
+        decmat_align[np.where(decmat_align<0)] = 4 + decmat_align[np.where(decmat_align<0)]
         
         b = np.zeros((decmat.shape[0], decmat.shape[1], num_blk)) 
         w = 0 
+        
         for i in range(num_blk): 
-            w = w + newblk[i] 
-            b[:,:,i] = (decmat_aliE / 2**(2-w)).astype('int') 
-            decmat_aliE -= b[:,:,i]*(2**(2-w)) 
             
+            w = w + newblk[i] 
+            b[:,:,i] = (decmat_align / 2**(2-w)).astype('int') 
+            decmat_align -= b[:,:,i]*(2**(2-w)) 
+            
+        # for i in range(num_blk): 
+        #     w = w + newblk[i] 
+            
+        #     r = np.random.lognormal(0, self.var, size=decmat.shape) 
+        #     b[:,:,i] = ((decmat_aliE / 2**(2-w)).astype('int'))*r 
+        #     decmat_aliE -= b[:,:,i]*(2**(2-w)) 
+        
         e_max_range = 2**(bw_e-1) - 1
-        
-        return np.clip(np.array([e_bia]), -e_max_range, e_max_range), b 
-        
+        return np.clip(e_bia,  -e_max_range, e_max_range), b 
+    
     def fpvmm(self, xin, matin, xblk=[1,2,2,2,4,4,4,4], mblk=[1,2,2,2,4,4,4,4], bw_e=8): 
         
         if len(xin.shape)==1: 
-            x = xin.reshape((1, len(xin)))
+            x = xin.reshape((1, len(xin))) 
         else:
-            x = xin*1
+            x = xin
             
         if len(matin.shape)==1: 
-            mat = matin.reshape((1, len(matin))).T
+            mat = matin.reshape((1, len(matin))).T 
         else:
-            mat = matin*1
+            mat = matin
         
-
         Ex, fpx = self.__Dec2FpMap(x, blk=xblk, bw_e=bw_e) 
-        Em, fpm = self.__Dec2FpMap(mat, blk=mblk, bw_e=bw_e)
+        Em, fpm = self.__Dec2FpMap(mat.T, blk=mblk, bw_e=bw_e)
+        fpm = fpm.transpose(1,0,2)
         
         nxblk = [1, 1]+xblk
         nmblk = [1, 1]+mblk
         
         out = np.zeros((x.shape[0], mat.shape[1]))
         wi = 0
+        
         for i in range(len(nxblk)):
-            
             wi += nxblk[i]
             out1 = np.zeros((x.shape[0], mat.shape[1])) 
             wj = 0 
+            
             for j in range(len(nmblk)): 
                 wj += nmblk[j] 
                 if j==0: 
@@ -103,16 +115,16 @@ class fpmemdpe:
             if i==0: 
                 out = out - out1*(2**(2-wi)) 
             else: 
-                out = out + out1*(2**(2-wi)) 
+                out = out + out1*(2**(2-wi))  
                 
-        mid_result = out*(2.**(Ex[0]+Em[0]))
-                   
+        out = np.dot(np.diag(2.**Ex), np.dot(out, np.diag(2.**Em)))
+                
         if (len(xin.shape)==1) or (len(mat.shape)==1):
-            final_result = mid_result.reshape(-1)
+            out = out.reshape(-1)
         else:
-            final_result = mid_result
+            out = out
             
-        return final_result 
+        return out 
         
 
     def Num2V(self, xint, xmax): 
@@ -144,7 +156,7 @@ class fpmemdpe:
             adcRef = crossbar.hdot(maxV, minR.reshape(len(minR), 1), self.wire_resistance) - crossbar.hdot(maxV, maxR.reshape(len(maxR), 1), self.wire_resistance)
 
         else:
-            
+          
             I = np.dot(Vin, G - self.LGS)      
             
             adcRef = (self.HGS - self.LGS) * self.vread * Vin.shape[1]   
@@ -152,17 +164,18 @@ class fpmemdpe:
         Iq = np.round(I/adcRef * (self.radc-1)) / (self.radc-1) 
         QG = (self.HGS - self.LGS) / (self.g_level-1) 
             
-        Num = np.round(Iq / QG / self.vread / (self.g_level-1) * xmax * mmax * adcRef) 
+        Num = np.round(Iq / QG / self.vread / (self.g_level-1) * xmax * mmax * adcRef)  
             
         return Num 
     
     def __dot(self, x, mat, xblk=[1,2,2,2,4,4,4,4], mblk=[1,2,2,2,4,4,4,4], bw_e=8, wire_factor=False):
         
         Ea, xint = self.__Dec2FpMap(x, blk=xblk, bw_e=bw_e) 
-        Eb, matint = self.__Dec2FpMap(mat, blk=xblk, bw_e=bw_e) 
+        Eb, matint = self.__Dec2FpMap(mat.T, blk=mblk, bw_e=bw_e) 
+        matint = matint.transpose(1,0,2)
         
-        nxblk = [1, 1]+xblk
-        nmblk = [1, 1]+mblk
+        nxblk = [1, 1]+xblk 
+        nmblk = [1, 1]+mblk 
         
         num_xblk = len(nxblk) 
         num_mblk = len(nmblk) 
@@ -190,10 +203,11 @@ class fpmemdpe:
                 out = out - out1* 2**(2-wi) 
             else: 
                 out = out + out1* 2**(2-wi) 
+                
+        return np.dot(np.diag(2.**Ea), np.dot(out, np.diag(2.**Eb))) 
+        
 
-        return out * (2.**(Ea[0]+Eb[0])) 
-    
-    def MapReduceDot(self, xin, matin, xblk=[1,2,2,2,4,4,4,4], mblk=[1,2,2,2,4,4,4,4], bw_e=8, wire_factor=False): 
+    def MapReduceDot(self, xin, matin, xblk=[1 for m in range(23)], mblk=[1 for m in range(23)], bw_e=8, wire_factor=False): 
         
         if len(xin.shape)==1: 
             x = xin.reshape((1, len(xin))) 
@@ -203,7 +217,7 @@ class fpmemdpe:
         if len(matin.shape)==1: 
             mat = matin.reshape((1, len(matin))).T 
         else:
-            mat = matin 
+            mat = matin
             
         n_row = x.shape[0] 
         n_col = mat.shape[1] 
@@ -219,16 +233,13 @@ class fpmemdpe:
             x = np.hstack((x, np.zeros((x.shape[0], self.array_size[0] - polish0))))
         
         result = np.zeros((x.shape[0], mat.shape[1])) 
-        
         for i in range(int(mat.shape[1]/self.array_size[1])): 
-            
             block_out_row = 0 
-            
             for j in range(int(mat.shape[0]/self.array_size[0])): 
-                
                 operand_x = x[:, j*self.array_size[0] : (j+1)*self.array_size[0]] 
                 operand_m = mat[j*self.array_size[0] : (j+1)*self.array_size[0], i*self.array_size[1] : (i+1)*self.array_size[1]] 
                 block_out_row += self.__dot(operand_x, operand_m, xblk, mblk, bw_e, wire_factor) 
+                
                 
             result[:, i*self.array_size[1] : (i+1)*self.array_size[1]] = block_out_row 
             
@@ -240,4 +251,3 @@ class fpmemdpe:
             final_result = mid_result
             
         return final_result
-    

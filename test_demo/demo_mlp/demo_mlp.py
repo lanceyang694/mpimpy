@@ -135,7 +135,7 @@ if __name__ == '__main__':
     
     epochs = 8
     batch_size = 64
-    train_set, valid_set, test_set = mnist(r'D:\Anaconda\workfiles\Deep_Learning_Coding-main\data\mnist.pkl.gz', one_hot=True)
+    train_set, valid_set, test_set = mnist(r'data\mnist.pkl.gz', one_hot=True)
     X_train = train_set[0]
     Y_train = train_set[1]
 

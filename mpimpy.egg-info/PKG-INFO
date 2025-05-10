@@ -1,16 +1,30 @@
-Metadata-Version: 2.1
+Metadata-Version: 2.4
 Name: mpimpy
-Version: 0.1.1
+Version: 1.0
 Summary: A python algorithm-hardware co-design framework for memristor-based in-memory computing.
 Home-page: https://github.com/lanceyang694
 Author: Ling Yang
 Author-email: 3299285328@qq.com
 Maintainer: Researchers from Prof. Yi Li's group at HUST
 License: MIT
-Platform: UNKNOWN
 Requires-Python: >=3.6
 Description-Content-Type: text/markdown
 License-File: LICENSE.txt
+Requires-Dist: numpy
+Requires-Dist: scipy
+Requires-Dist: matplotlib
+Requires-Dist: pandas
+Dynamic: author
+Dynamic: author-email
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: license
+Dynamic: license-file
+Dynamic: maintainer
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
 
 # mPimPy: A Software-Hardware Co-Design Simulator for Memristor-Based In-Memory Computing
 
@@ -20,7 +34,7 @@ In memory computing technology is a potential solution to overcome the von Neuma
 
 ## Installing
 
-You can install mPimPy var pip.
+You can install mPimPy via pip.
 
 ```shell
 pip install mpimpy
@@ -126,6 +140,16 @@ print('FP32 software RE: ', RE(c, c_fp_software))
 print('FP32 hardware RE: ', RE(c, c_fp_hardware))
 ```
 
+## Release Note
+
+### Fixed
+
+Fixed several bugs from the previous version.
+
+### Optimized
+
+Improved the matrix pre-processing algorithm by combing block-wise pre-processing and vector-wise strategies, reducing errors in **quantization** and **pre-alignment**.
+
 ## Author
 
 Author: Ling Yang
@@ -154,5 +178,3 @@ Any advice and criticism are highly appreciated on this package. Naturally, you 
 
 [2]     [Li C, Hu M, Li Y, et al. Analogue signal and image processing with large
  memristor crossbars[J]. Nature electronics, 2018, 1(1): 52-59.](https://www.nature.com/articles/s41928-017-0002-z)
-
-

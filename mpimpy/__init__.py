@@ -1,6 +1,6 @@
-# this is pimpy package
+# this is mpimpy package
 __all__ = ["bitslicedpe", "diffpairdpe", "fpmemdpe"]
-__version__ = "0.1.1"
+__version__ = "1.0"
 
 from .memmat import bitslicedpe
 from .memmatdp import diffpairdpe

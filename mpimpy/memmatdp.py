@@ -1,11 +1,9 @@
 # differential pair
-
 '''
-
 @Author: Ling Yang
 email: 3299285328@qq.com
 Huazhong University of Science and Technology, School of Integrated Circuits 
-
+Date: 2025/02/01
 '''
 
 import numpy as np
@@ -33,20 +31,28 @@ class diffpairdpe:
     
     def Num2V(self, data): 
         
-        if np.max(np.abs(data)) == 0: 
-            vin = np.zeros(data.shape)
-            
-        else:
-            vin = self.vread * np.round(data/np.max(np.abs(data))*(self.rdac - 1)) / (self.rdac - 1)
+        vin = np.zeros(data.shape)
+        max_mat = np.zeros(data.shape[0])
+        for i in range(data.shape[0]):
+            max_mat[i] = np.max(np.abs(data[i, :]))
+            if max_mat[i] == 0:
+                vin[i, :] = np.zeros(data.shape[1])
+            else:
+                vin[i, :] = self.vread * np.round(data[i, :]/max_mat[i]*(self.rdac - 1)) / (self.rdac - 1)
+
         
-        return np.hstack((vin, -vin)) 
+        return (max_mat, np.hstack((vin, -vin)))
     
     def Num2R(self, data): 
         
-        if np.max(np.abs(data)) == 0:
-            q_data = np.zeros(data.shape)
-        else:
-            q_data = np.round(data/np.max(np.abs(data))*(self.g_level - 1))
+        q_data = np.zeros(data.shape)
+        max_mat = np.zeros(data.shape[1])
+        for i in range(data.shape[1]):
+            max_mat[i] = np.max(np.abs(data[:, i]))
+            if max_mat[i] == 0:
+                q_data[:, i] = np.zeros(data.shape[0])
+            else:
+                q_data[:, i] = np.round(data[:, i]/max_mat[i]*(self.g_level - 1))
             
         up_0 = np.where(q_data>=0)
         low_0 = np.where(q_data<0)
@@ -66,16 +72,18 @@ class diffpairdpe:
         gp = gp*r1
         gn = gn*r2
         
-        return np.vstack((gp, gn)) 
+        return (max_mat, np.vstack((gp, gn))) 
     
     def __dot(self, x, mat, wire_factor=False): 
           
-        vx = self.Num2V(x) 
-        gmat = self.Num2R(mat) 
+        max_x, vx = self.Num2V(x) 
+        max_m, gmat = self.Num2R(mat) 
         g_unit = (self.HGS - self.LGS) / (self.g_level - 1) 
         
         if wire_factor:
             I = crossbar.hdot(vx, 1/gmat, self.wire_resistance)
+            # Iref = (self.HGS - self.LGS) * self.vread * x.shape[1]
+
             maxV = np.concatenate((self.vread*np.ones(x.shape[1]), -self.vread*np.ones(x.shape[1])))
             maxR = np.concatenate((1/self.HGS * np.ones(mat.shape[0]), 1/self.LGS * np.ones(mat.shape[0])))
             Iref = crossbar.hdot(maxV, maxR.reshape(len(maxR), 1), self.wire_resistance)
@@ -84,8 +92,8 @@ class diffpairdpe:
             Iref = (self.HGS - self.LGS) * self.vread * x.shape[1]
 
         Iq = np.round(I/Iref * (self.radc-1))/(self.radc-1)
-        Num = Iq / g_unit / self.vread / (self.g_level - 1) * np.max(np.abs(x)) * np.max(np.abs(mat)) * Iref
-        
+        Num = np.dot(np.diag(max_x), np.dot(Iq, np.diag(max_m))) / g_unit / self.vread / (self.g_level - 1) * Iref
+
         return Num
     
     def MapReduceDot(self, xin, matin, wire_factor=False):
@@ -120,7 +128,6 @@ class diffpairdpe:
                 operand_x = x[:, j*self.array_size[1] : (j+1)*self.array_size[1]] 
                 operand_m = mat[j*self.array_size[0] : (j+1)*self.array_size[0], i*self.array_size[1] : (i+1)*self.array_size[1]] 
                 block_out_row += self.__dot(operand_x, operand_m, wire_factor) 
-                # block_out_row += np.dot(operand_x, operand_m)
                 
             result[:, i*self.array_size[1] : (i+1)*self.array_size[1]] = block_out_row
             
